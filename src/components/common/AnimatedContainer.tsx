@@ -14,6 +14,15 @@ type AnimatedContainerProps = {
     | "none";
   delay?: number;
   duration?: number;
+  style?: React.CSSProperties;
+  onClick?: () => void;
+  onMouseDown?: (e: React.MouseEvent | React.TouchEvent) => void;
+  onMouseMove?: (e: React.MouseEvent | React.TouchEvent) => void;
+  onMouseUp?: (e: React.MouseEvent | React.TouchEvent) => void;
+  onMouseLeave?: (e: React.MouseEvent | React.TouchEvent) => void;
+  onTouchStart?: (e: React.TouchEvent) => void;
+  onTouchMove?: (e: React.TouchEvent) => void;
+  onTouchEnd?: (e: React.TouchEvent) => void;
 };
 
 export const AnimatedContainer = ({
@@ -22,6 +31,15 @@ export const AnimatedContainer = ({
   animation = "fade-in",
   delay = 0,
   duration = 300,
+  style = {},
+  onClick,
+  onMouseDown,
+  onMouseMove,
+  onMouseUp,
+  onMouseLeave,
+  onTouchStart,
+  onTouchMove,
+  onTouchEnd,
 }: AnimatedContainerProps) => {
   const [isVisible, setIsVisible] = React.useState(false);
 
@@ -46,7 +64,16 @@ export const AnimatedContainer = ({
       style={{
         animationDelay: `${delay}ms`,
         animationDuration: `${duration}ms`,
+        ...style
       }}
+      onClick={onClick}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      onMouseLeave={onMouseLeave}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
     >
       {children}
     </div>
