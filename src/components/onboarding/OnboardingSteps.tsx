@@ -247,7 +247,7 @@ const OnboardingSteps: React.FC = () => {
               Back
             </Button>
           ) : (
-            <div /> {/* Empty div for layout */}
+            <div /> /* Empty div for layout */
           )}
           
           <Button 
