@@ -108,7 +108,13 @@ const Navbar = () => {
             </Link>
             <Link
               to="/settings"
-              className="p-2 rounded-full hover:bg-muted/80 transition-all duration-300"
+              className={cn(
+                "p-2 rounded-full hover:bg-muted/80 transition-all duration-300",
+                {
+                  "text-primary": location.pathname === "/settings",
+                  "text-foreground": location.pathname !== "/settings",
+                }
+              )}
             >
               <Settings className="w-5 h-5" />
             </Link>
