@@ -2,13 +2,15 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Heart, MessageSquare, User, Search, Settings } from "lucide-react";
+import { Heart, MessageSquare, User, Settings, Crown } from "lucide-react";
 import AnimatedContainer from "../common/AnimatedContainer";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 const Navbar = () => {
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [isHome, setIsHome] = useState(true);
+  const { isSubscribed } = useSubscription();
 
   useEffect(() => {
     setIsHome(location.pathname === "/");
@@ -98,13 +100,20 @@ const Navbar = () => {
             </div>
           )}
 
-          {/* Settings and Search (Desktop) */}
+          {/* Settings and Subscription (Desktop) */}
           <div className="hidden md:flex items-center space-x-3">
             <Link
-              to="/search"
-              className="p-2 rounded-full hover:bg-muted/80 transition-all duration-300"
+              to="/subscription"
+              className={cn(
+                "flex items-center gap-1 p-2 rounded-full hover:bg-muted/80 transition-all duration-300",
+                {
+                  "text-amber-400": isSubscribed,
+                  "text-foreground": !isSubscribed,
+                }
+              )}
             >
-              <Search className="w-5 h-5" />
+              <Crown className={cn("w-5 h-5", { "fill-amber-400": isSubscribed })} />
+              {isSubscribed && <span className="text-sm font-medium">Premium</span>}
             </Link>
             <Link
               to="/settings"

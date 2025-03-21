@@ -1,11 +1,12 @@
-
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import ProfileCard, { ProfileData } from "@/components/profile/ProfileCard";
 import { Button } from "@/components/common/Button";
-import { Filter, Heart } from "lucide-react";
+import { Filter, Heart, Crown } from "lucide-react";
 import AnimatedContainer from "@/components/common/AnimatedContainer";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 // Sample profiles data
 const sampleProfiles: ProfileData[] = [
@@ -56,6 +57,13 @@ const Dashboard = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [noMoreProfiles, setNoMoreProfiles] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { 
+    currentTier, 
+    remainingSwipes, 
+    decrementSwipes, 
+    isSubscribed 
+  } = useSubscription();
 
   const currentProfile = profiles[currentProfileIndex];
 
@@ -69,6 +77,9 @@ const Dashboard = () => {
   }, [currentProfileIndex, profiles.length]);
 
   const handleLike = (id: string) => {
+    // Decrement swipes if user is on free tier
+    decrementSwipes();
+    
     toast({
       title: "Liked!",
       description: `You liked ${currentProfile.name}`,
@@ -80,6 +91,9 @@ const Dashboard = () => {
   };
 
   const handleDislike = (id: string) => {
+    // Decrement swipes if user is on free tier
+    decrementSwipes();
+    
     // Move to next profile
     setCurrentProfileIndex(currentProfileIndex + 1);
   };
@@ -94,6 +108,13 @@ const Dashboard = () => {
     setShowFilters(!showFilters);
   };
 
+  const goToSubscription = () => {
+    navigate('/subscription');
+  };
+
+  // Check if the user has used all their swipes
+  const canSwipe = isSubscribed || remainingSwipes > 0;
+
   return (
     <div className="min-h-screen bg-background pt-16 pb-20 md:pb-0">
       <Navbar />
@@ -101,16 +122,32 @@ const Dashboard = () => {
       <main className="container max-w-6xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Discover</h1>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={toggleFilters}
-            className="relative"
-          >
-            <Filter className="w-5 h-5" />
-            {/* Active filter indicator */}
-            <span className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {!isSubscribed && (
+              <Button 
+                variant="premium" 
+                size="sm"
+                onClick={goToSubscription}
+                className="gap-1.5"
+              >
+                <Crown className="w-4 h-4" /> 
+                Upgrade 
+                <span className="rounded-full bg-background text-primary px-1.5 py-0.5 text-xs">
+                  {remainingSwipes} swipes left
+                </span>
+              </Button>
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={toggleFilters}
+              className="relative"
+            >
+              <Filter className="w-5 h-5" />
+              {/* Active filter indicator */}
+              <span className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full" />
+            </Button>
+          </div>
         </div>
         
         {/* Filter panel */}
@@ -183,6 +220,24 @@ const Dashboard = () => {
               </p>
               <Button onClick={resetProfiles}>
                 Refresh Profiles
+              </Button>
+            </AnimatedContainer>
+          ) : !canSwipe ? (
+            <AnimatedContainer
+              animation="scale-in"
+              className="text-center p-8 rounded-xl border border-border max-w-sm w-full"
+            >
+              <div className="mb-4 flex justify-center">
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                  <Crown className="w-8 h-8 text-primary" />
+                </div>
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Swipe limit reached</h2>
+              <p className="text-muted-foreground mb-6">
+                You've used all your free swipes for today. Upgrade to Premium for unlimited swipes and more features!
+              </p>
+              <Button onClick={goToSubscription} variant="default">
+                <Crown className="w-4 h-4 mr-2" /> Upgrade to Premium
               </Button>
             </AnimatedContainer>
           ) : (
