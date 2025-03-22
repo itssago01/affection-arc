@@ -1,11 +1,13 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
-import MessageBubble, { MessageType } from "@/components/messaging/MessageBubble";
+import MessageBubble, { MessageType, ReactionType } from "@/components/messaging/MessageBubble";
 import AnimatedContainer from "@/components/common/AnimatedContainer";
 import { Button } from "@/components/common/Button";
-import { ArrowLeft, Heart, Image, Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Heart, Image, Mic, Paperclip, Send } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 // Sample conversation data
 const sampleConversations = {
@@ -19,26 +21,32 @@ const sampleConversations = {
         content: "Hey there! I noticed we both like hiking. What's your favorite trail?",
         sender: "match",
         timestamp: new Date(Date.now() - 3600000 * 24),
+        status: "read",
       },
       {
         id: "2",
         content: "Hi Sophie! I love hiking the Appalachian Trail. Have you been there?",
         sender: "user",
         timestamp: new Date(Date.now() - 3600000 * 23),
+        status: "read",
       },
       {
         id: "3",
         content: "Yes! I did a section of it last summer. It was beautiful. We should go sometime!",
         sender: "match",
         timestamp: new Date(Date.now() - 3600000 * 22),
+        status: "read",
+        reaction: "heart",
       },
       {
         id: "4",
         content: "That sounds great! I'd love to. When are you usually free?",
         sender: "user",
         timestamp: new Date(Date.now() - 3600000 * 2),
+        status: "read",
       }
     ],
+    isTyping: false,
   },
   "2": {
     name: "Alex",
@@ -50,20 +58,24 @@ const sampleConversations = {
         content: "I saw you like playing guitar too! What kind of music do you play?",
         sender: "match",
         timestamp: new Date(Date.now() - 3600000 * 50),
+        status: "read",
       },
       {
         id: "2",
         content: "Hey Alex! I'm into indie and folk mostly. You?",
         sender: "user",
         timestamp: new Date(Date.now() - 3600000 * 49),
+        status: "read",
       },
       {
         id: "3",
         content: "Same here! Have you heard the new Bon Iver album?",
         sender: "match",
         timestamp: new Date(Date.now() - 3600000 * 48),
+        status: "read",
       }
     ],
+    isTyping: false,
   },
 };
 
@@ -105,7 +117,9 @@ const Messages = () => {
   const [activeConversation, setActiveConversation] = useState<any>(null);
   const [conversations, setConversations] = useState<any>(sampleConversations);
   const [matches, setMatches] = useState(sampleMatchesList);
+  const [isRecording, setIsRecording] = useState(false);
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   // Set active conversation based on route param
   useEffect(() => {
@@ -132,6 +146,7 @@ const Messages = () => {
       content: newMessage,
       sender: "user",
       timestamp: new Date(),
+      status: "sent",
     };
 
     // Update conversations state
@@ -151,6 +166,218 @@ const Messages = () => {
 
     // Clear input
     setNewMessage("");
+
+    // Simulate message delivery status update
+    setTimeout(() => {
+      updateMessageStatus(message.id, "delivered");
+      
+      // Simulate match typing
+      if (Math.random() > 0.3) {
+        simulateMatchTyping();
+      }
+    }, 1000);
+  };
+
+  // Update message status (sent -> delivered -> read)
+  const updateMessageStatus = (messageId: string, status: "sent" | "delivered" | "read") => {
+    if (!activeConversation) return;
+    
+    const updatedMessages = activeConversation.messages.map((msg: MessageType) => 
+      msg.id === messageId ? { ...msg, status } : msg
+    );
+    
+    setActiveConversation({
+      ...activeConversation,
+      messages: updatedMessages,
+    });
+    
+    setConversations({
+      ...conversations,
+      [activeConversation.id]: {
+        ...conversations[activeConversation.id],
+        messages: updatedMessages,
+      },
+    });
+  };
+
+  // Handle message reactions
+  const handleMessageReaction = (messageId: string, reaction: ReactionType) => {
+    if (!activeConversation) return;
+    
+    const updatedMessages = activeConversation.messages.map((msg: MessageType) => 
+      msg.id === messageId ? { ...msg, reaction } : msg
+    );
+    
+    setActiveConversation({
+      ...activeConversation,
+      messages: updatedMessages,
+    });
+    
+    setConversations({
+      ...conversations,
+      [activeConversation.id]: {
+        ...conversations[activeConversation.id],
+        messages: updatedMessages,
+      },
+    });
+
+    // Show toast when adding a reaction (not when removing)
+    if (reaction) {
+      toast({
+        description: `You reacted with ${reaction === "heart" ? "❤️" : reaction === "thumbsUp" ? "👍" : "😄"}`
+      });
+    }
+  };
+
+  // Handle message deletion
+  const handleDeleteMessage = (messageId: string) => {
+    if (!activeConversation) return;
+    
+    const updatedMessages = activeConversation.messages.map((msg: MessageType) => 
+      msg.id === messageId ? { ...msg, isDeleted: true } : msg
+    );
+    
+    setActiveConversation({
+      ...activeConversation,
+      messages: updatedMessages,
+    });
+    
+    setConversations({
+      ...conversations,
+      [activeConversation.id]: {
+        ...conversations[activeConversation.id],
+        messages: updatedMessages,
+      },
+    });
+    
+    toast({
+      description: "Message deleted"
+    });
+  };
+
+  // Simulate match typing and response
+  const simulateMatchTyping = () => {
+    if (!activeConversation) return;
+    
+    // Set typing indicator
+    setConversations({
+      ...conversations,
+      [activeConversation.id]: {
+        ...conversations[activeConversation.id],
+        isTyping: true,
+      },
+    });
+    
+    setActiveConversation({
+      ...activeConversation,
+      isTyping: true,
+    });
+    
+    // After a random delay, send a response
+    const typingDuration = 1500 + Math.random() * 3000;
+    
+    setTimeout(() => {
+      // Clear typing indicator
+      setConversations({
+        ...conversations,
+        [activeConversation.id]: {
+          ...conversations[activeConversation.id],
+          isTyping: false,
+        },
+      });
+      
+      setActiveConversation({
+        ...activeConversation,
+        isTyping: false,
+      });
+      
+      // Generate a response message
+      const responseMessages = [
+        "That sounds great! I'd love to hear more.",
+        "Hmm, let me think about that...",
+        "That's so interesting! Tell me more!",
+        "I feel the same way!",
+        "What else have you been up to lately?",
+        "I hadn't thought about it that way before!",
+      ];
+      
+      const responseIndex = Math.floor(Math.random() * responseMessages.length);
+      const responseMessage: MessageType = {
+        id: Date.now().toString(),
+        content: responseMessages[responseIndex],
+        sender: "match",
+        timestamp: new Date(),
+        status: "sent",
+      };
+      
+      // Update conversations with the new response
+      const updatedConversation = {
+        ...conversations[activeConversation.id],
+        messages: [...conversations[activeConversation.id].messages, responseMessage],
+      };
+      
+      setConversations({
+        ...conversations,
+        [activeConversation.id]: updatedConversation,
+      });
+      
+      setActiveConversation({
+        ...activeConversation,
+        messages: [...activeConversation.messages, responseMessage],
+        isTyping: false,
+      });
+      
+      // Simulate marking user's messages as read
+      setTimeout(() => {
+        const unreadUserMessages = activeConversation.messages
+          .filter((msg: MessageType) => msg.sender === "user" && msg.status !== "read");
+          
+        if (unreadUserMessages.length > 0) {
+          const updatedMessages = activeConversation.messages.map((msg: MessageType) => 
+            msg.sender === "user" && msg.status !== "read" ? { ...msg, status: "read" } : msg
+          );
+          
+          setActiveConversation({
+            ...activeConversation,
+            messages: updatedMessages,
+          });
+          
+          setConversations({
+            ...conversations,
+            [activeConversation.id]: {
+              ...conversations[activeConversation.id],
+              messages: updatedMessages,
+            },
+          });
+        }
+      }, 1000);
+      
+    }, typingDuration);
+  };
+
+  // Handle voice recording
+  const toggleRecording = () => {
+    if (isRecording) {
+      setIsRecording(false);
+      toast({
+        description: "Voice recording canceled"
+      });
+    } else {
+      setIsRecording(true);
+      toast({
+        description: "Voice recording is not implemented yet",
+        variant: "destructive"
+      });
+      setTimeout(() => setIsRecording(false), 2000);
+    }
+  };
+
+  // Handle file attachment
+  const handleAttachment = () => {
+    toast({
+      description: "File attachment is not implemented yet",
+      variant: "destructive"
+    });
   };
 
   const formatDate = (date: Date) => {
@@ -244,8 +471,15 @@ const Messages = () => {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="ml-3">
-                  <h2 className="font-medium">{activeConversation.name}, {activeConversation.age}</h2>
+                <div className="ml-3 flex-1">
+                  <div className="flex items-center">
+                    <h2 className="font-medium">{activeConversation.name}, {activeConversation.age}</h2>
+                    {activeConversation.isTyping && (
+                      <span className="ml-2 text-xs text-muted-foreground animate-pulse">
+                        typing...
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               
@@ -254,7 +488,9 @@ const Messages = () => {
                 {activeConversation.messages.map((message: MessageType, index: number) => (
                   <MessageBubble 
                     key={message.id} 
-                    message={message} 
+                    message={message}
+                    onReaction={handleMessageReaction}
+                    onDelete={handleDeleteMessage}
                   />
                 ))}
                 <div ref={messageEndRef} />
@@ -263,32 +499,80 @@ const Messages = () => {
               {/* Message input */}
               <div className="p-4 border-t border-border">
                 <div className="flex items-center">
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <Image className="w-5 h-5" />
-                  </Button>
-                  <input
-                    type="text"
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={handleAttachment}
+                        >
+                          <Paperclip className="w-5 h-5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>Add attachment</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={handleAttachment}
+                        >
+                          <Image className="w-5 h-5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>Send photo</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <Input
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
-                    className="flex-1 mx-2 py-2 px-4 rounded-full bg-muted/50 border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="flex-1 mx-2 rounded-full bg-muted/50 border border-border focus:ring-primary/20"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         handleSendMessage();
                       }
                     }}
                   />
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant={isRecording ? "destructive" : "ghost"}
+                          size="icon"
+                          className={isRecording ? "" : "text-muted-foreground hover:text-foreground"}
+                          onClick={toggleRecording}
+                        >
+                          <Mic className={`w-5 h-5 ${isRecording ? "animate-pulse" : ""}`} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>{isRecording ? "Cancel recording" : "Voice message"}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
                   <Button 
                     variant={newMessage.trim() ? "primary" : "ghost"}
                     size="icon"
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim()}
+                    icon={<Send className="w-5 h-5" />}
                   >
-                    <Send className="w-5 h-5" />
+                    <span className="sr-only">Send</span>
                   </Button>
                 </div>
               </div>
