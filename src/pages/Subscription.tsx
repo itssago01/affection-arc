@@ -12,12 +12,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import AnimatedContainer from "@/components/common/AnimatedContainer";
 
 const Subscription = () => {
-  const { currentTier, subscriptionPlans, upgradeTier } = useSubscription();
+  const { 
+    currentTier, 
+    subscriptionPlans, 
+    upgradeTier, 
+    remainingSwipes, 
+    lastSwipeReset 
+  } = useSubscription();
   const [selectedPlan, setSelectedPlan] = React.useState<SubscriptionTier | null>(null);
   const [showConfirmation, setShowConfirmation] = React.useState(false);
 
@@ -33,6 +38,21 @@ const Subscription = () => {
     }
   };
 
+  // Calculate next reset date
+  const nextResetDate = React.useMemo(() => {
+    const nextReset = new Date(lastSwipeReset);
+    nextReset.setDate(nextReset.getDate() + 7);
+    return nextReset;
+  }, [lastSwipeReset]);
+
+  const formatDate = (date: Date): string => {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0 pt-16">
       <Navbar />
@@ -44,6 +64,24 @@ const Subscription = () => {
             Choose the perfect plan to enhance your dating experience
           </p>
         </AnimatedContainer>
+
+        {currentTier === "free" && (
+          <AnimatedContainer animation="slide-up" className="mb-6 p-4 bg-muted rounded-xl">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div>
+                <p className="font-medium">
+                  You have {remainingSwipes} free swipes remaining
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Swipes refresh on {formatDate(nextResetDate)}
+                </p>
+              </div>
+              <Button variant="default" onClick={() => handleSubscribe("weekly")}>
+                Upgrade for Unlimited Swipes
+              </Button>
+            </div>
+          </AnimatedContainer>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
           {Object.values(subscriptionPlans).map((plan) => (

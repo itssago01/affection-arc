@@ -21,6 +21,7 @@ interface SubscriptionContextType {
   resetSwipes: () => void;
   upgradeTier: (tier: SubscriptionTier) => void;
   isSubscribed: boolean;
+  lastSwipeReset: Date;
 }
 
 const subscriptionPlans: Record<SubscriptionTier, SubscriptionPlan> = {
@@ -81,6 +82,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({
     return savedSwipes ? parseInt(savedSwipes, 10) : subscriptionPlans.free.swipeLimit;
   });
 
+  const [lastSwipeReset, setLastSwipeReset] = useState<Date>(() => {
+    const savedLastReset = localStorage.getItem("lastSwipeReset");
+    return savedLastReset ? new Date(savedLastReset) : new Date();
+  });
+
   const { toast } = useToast();
   
   useEffect(() => {
@@ -90,6 +96,39 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     localStorage.setItem("remainingSwipes", remainingSwipes.toString());
   }, [remainingSwipes]);
+
+  useEffect(() => {
+    localStorage.setItem("lastSwipeReset", lastSwipeReset.toISOString());
+  }, [lastSwipeReset]);
+
+  // Check if a week has passed since the last reset
+  useEffect(() => {
+    const checkAndResetSwipes = () => {
+      const now = new Date();
+      const oneWeek = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+      
+      if (now.getTime() - lastSwipeReset.getTime() >= oneWeek) {
+        resetSwipes();
+        setLastSwipeReset(now);
+        
+        if (currentTier === "free") {
+          toast({
+            title: "Swipes Refreshed!",
+            description: "Your free swipes have been reset for the week.",
+            variant: "default",
+          });
+        }
+      }
+    };
+    
+    // Check on initial load
+    checkAndResetSwipes();
+    
+    // Set up a daily check
+    const interval = setInterval(checkAndResetSwipes, 24 * 60 * 60 * 1000); // Check once per day
+    
+    return () => clearInterval(interval);
+  }, [lastSwipeReset, currentTier, toast]);
 
   const decrementSwipes = () => {
     if (currentTier !== "free") return;
@@ -116,6 +155,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({
   const resetSwipes = () => {
     if (currentTier === "free") {
       setRemainingSwipes(subscriptionPlans.free.swipeLimit);
+      setLastSwipeReset(new Date());
     }
   };
 
@@ -143,6 +183,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({
         resetSwipes,
         upgradeTier,
         isSubscribed,
+        lastSwipeReset,
       }}
     >
       {children}
