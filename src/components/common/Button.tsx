@@ -1,17 +1,18 @@
 
 import React from "react";
 import { Button as UIButton } from "@/components/ui/button";
-import { VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-// Extend the button variants to include a new 'premium' variant
-type ButtonVariants = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "premium" | "glass";
+// Define all supported button variants
+type ButtonVariants = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "premium" | "glass" | "primary";
 
 interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "color"> {
   variant?: ButtonVariants;
   size?: "default" | "sm" | "lg" | "icon";
   children: React.ReactNode;
   className?: string;
+  icon?: React.ReactNode;
+  iconPosition?: "left" | "right";
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -19,6 +20,8 @@ export const Button: React.FC<ButtonProps> = ({
   size = "default",
   children,
   className,
+  icon,
+  iconPosition = "left",
   ...props
 }) => {
   // Map our custom variants to shadcn UI button styles
@@ -31,20 +34,34 @@ export const Button: React.FC<ButtonProps> = ({
       return "backdrop-blur-md bg-white/10 text-white border border-white/20 hover:bg-white/20";
     }
     
-    // For other variants, use the default shadcn UI styles
+    if (variant === "primary") {
+      return "bg-primary text-primary-foreground hover:bg-primary/90";
+    }
+    
+    // For standard shadcn UI variants, return undefined to use the default
     return undefined;
   };
 
   const variantClass = getVariantClass();
+  const shadowCnVariant = variantClass ? "default" : 
+    (variant === "primary" ? "default" : variant);
+  
+  const content = (
+    <>
+      {icon && iconPosition === "left" && <span className="mr-2">{icon}</span>}
+      {children}
+      {icon && iconPosition === "right" && <span className="ml-2">{icon}</span>}
+    </>
+  );
   
   return (
     <UIButton
-      variant={variantClass ? "default" : variant}
+      variant={shadowCnVariant as any}
       size={size}
       className={cn(variantClass, className)}
       {...props}
     >
-      {children}
+      {content}
     </UIButton>
   );
 };
