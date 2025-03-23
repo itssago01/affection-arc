@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { ArrowRight, Upload, Heart, User } from "lucide-react";
 import { Button } from "../common/Button";
 import AnimatedContainer from "../common/AnimatedContainer";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const steps = [
   {
@@ -40,22 +42,79 @@ const OnboardingSteps: React.FC = () => {
     age: "",
     location: "",
     bio: "",
-    photos: [],
-    interests: [],
+    photos: [] as string[],
+    interests: [] as string[],
     preferences: {
       ageRange: [18, 50],
       distance: 25,
       gender: "all",
     },
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const nextStep = () => {
+  const handleChange = (field: string, value: any) => {
+    if (field.includes(".")) {
+      const [parent, child] = field.split(".");
+      setFormData({
+        ...formData,
+        [parent]: {
+          ...formData[parent as keyof typeof formData],
+          [child]: value,
+        },
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [field]: value,
+      });
+    }
+  };
+
+  const nextStep = async () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Complete onboarding
-      navigate("/dashboard");
+      // Complete onboarding by saving profile to Supabase
+      try {
+        setIsSubmitting(true);
+        
+        // Get the current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          toast.error("You need to be logged in to create a profile");
+          navigate("/");
+          return;
+        }
+        
+        // Create profile in Supabase
+        const { error } = await supabase.from('profiles').upsert({
+          id: user.id,
+          name: formData.name,
+          age: parseInt(formData.age) || null,
+          location: formData.location,
+          bio: formData.bio,
+          gender: formData.preferences.gender === "all" ? null : formData.preferences.gender,
+          interests: formData.interests,
+          images: formData.photos,
+          // We're not setting looking_for here since we need to map the preferences
+          // to the correct format expected by the database
+        });
+        
+        if (error) {
+          console.error("Error saving profile:", error);
+          toast.error("Failed to save your profile. Please try again.");
+        } else {
+          toast.success("Profile created successfully!");
+          navigate("/dashboard");
+        }
+      } catch (error) {
+        console.error("Error during profile creation:", error);
+        toast.error("Something went wrong. Please try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -103,11 +162,41 @@ const OnboardingSteps: React.FC = () => {
                       "aspect-square rounded-lg border-2 border-dashed flex items-center justify-center bg-muted/50 cursor-pointer hover:bg-muted transition-colors duration-200",
                       idx < 2 && "border-primary/50"
                     )}
+                    onClick={() => {
+                      // Here you would typically implement an image upload
+                      // For demo purposes, we'll just add a placeholder URL
+                      const demoImages = [
+                        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
+                        "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
+                        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+                        "https://images.unsplash.com/photo-1517841905240-472988babdf9",
+                        "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6",
+                        "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+                      ];
+                      
+                      // Add the image to the photos array if not already there
+                      const updatedPhotos = [...formData.photos];
+                      if (!updatedPhotos[idx]) {
+                        updatedPhotos[idx] = demoImages[idx % demoImages.length];
+                        setFormData({
+                          ...formData,
+                          photos: updatedPhotos,
+                        });
+                      }
+                    }}
                   >
-                    <Upload className={cn(
-                      "w-6 h-6",
-                      idx < 2 ? "text-primary" : "text-muted-foreground"
-                    )} />
+                    {formData.photos[idx] ? (
+                      <img 
+                        src={formData.photos[idx]}
+                        alt={`User photo ${idx + 1}`}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    ) : (
+                      <Upload className={cn(
+                        "w-6 h-6",
+                        idx < 2 ? "text-primary" : "text-muted-foreground"
+                      )} />
+                    )}
                   </div>
                 ))}
               </div>
@@ -133,6 +222,8 @@ const OnboardingSteps: React.FC = () => {
                     type="text" 
                     className="w-full p-3 rounded-lg border border-border focus:ring-2 focus:ring-primary/20 outline-none"
                     placeholder="Enter your name"
+                    value={formData.name}
+                    onChange={(e) => handleChange("name", e.target.value)}
                   />
                 </div>
                 
@@ -143,6 +234,8 @@ const OnboardingSteps: React.FC = () => {
                       type="number" 
                       className="w-full p-3 rounded-lg border border-border focus:ring-2 focus:ring-primary/20 outline-none"
                       placeholder="Your age"
+                      value={formData.age}
+                      onChange={(e) => handleChange("age", e.target.value)}
                     />
                   </div>
                   <div>
@@ -151,6 +244,8 @@ const OnboardingSteps: React.FC = () => {
                       type="text" 
                       className="w-full p-3 rounded-lg border border-border focus:ring-2 focus:ring-primary/20 outline-none"
                       placeholder="City"
+                      value={formData.location}
+                      onChange={(e) => handleChange("location", e.target.value)}
                     />
                   </div>
                 </div>
@@ -160,6 +255,8 @@ const OnboardingSteps: React.FC = () => {
                   <textarea 
                     className="w-full p-3 rounded-lg border border-border focus:ring-2 focus:ring-primary/20 outline-none min-h-[100px]"
                     placeholder="Share a bit about yourself..."
+                    value={formData.bio}
+                    onChange={(e) => handleChange("bio", e.target.value)}
                   />
                 </div>
               </div>
@@ -183,10 +280,11 @@ const OnboardingSteps: React.FC = () => {
                         key={option}
                         className={cn(
                           "py-2 px-4 rounded-lg border transition-all duration-200",
-                          option === "Everyone" 
+                          option.toLowerCase() === formData.preferences.gender 
                             ? "bg-primary/10 border-primary text-primary"
                             : "border-border hover:border-primary/50"
                         )}
+                        onClick={() => handleChange("preferences.gender", option.toLowerCase())}
                       >
                         {option}
                       </button>
@@ -195,19 +293,44 @@ const OnboardingSteps: React.FC = () => {
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium mb-3 block">Age range: 25-45</label>
+                  <label className="text-sm font-medium mb-3 block">
+                    Age range: {formData.preferences.ageRange[0]}-{formData.preferences.ageRange[1]}
+                  </label>
                   <div className="h-2 bg-muted rounded-full relative">
-                    <div className="absolute left-[20%] right-[20%] h-full bg-primary rounded-full" />
-                    <div className="absolute left-[20%] top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 bg-white rounded-full border-2 border-primary cursor-pointer" />
-                    <div className="absolute right-[20%] top-1/2 -translate-y-1/2 translate-x-1/2 w-4 h-4 bg-white rounded-full border-2 border-primary cursor-pointer" />
+                    <div 
+                      className="absolute h-full bg-primary rounded-full" 
+                      style={{
+                        left: `${(formData.preferences.ageRange[0] - 18) / (50 - 18) * 100}%`,
+                        right: `${100 - ((formData.preferences.ageRange[1] - 18) / (50 - 18) * 100)}%`
+                      }}
+                    />
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-2 border-primary cursor-pointer"
+                      style={{ left: `${(formData.preferences.ageRange[0] - 18) / (50 - 18) * 100}%` }}
+                      // In a real app, you'd implement proper slider functionality
+                    />
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-2 border-primary cursor-pointer"
+                      style={{ left: `${(formData.preferences.ageRange[1] - 18) / (50 - 18) * 100}%` }}
+                      // In a real app, you'd implement proper slider functionality
+                    />
                   </div>
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Maximum distance: 25 miles</label>
+                  <label className="text-sm font-medium mb-1 block">
+                    Maximum distance: {formData.preferences.distance} miles
+                  </label>
                   <div className="h-2 bg-muted rounded-full relative">
-                    <div className="absolute left-0 right-[30%] h-full bg-primary rounded-full" />
-                    <div className="absolute right-[30%] top-1/2 -translate-y-1/2 translate-x-1/2 w-4 h-4 bg-white rounded-full border-2 border-primary cursor-pointer" />
+                    <div 
+                      className="absolute left-0 h-full bg-primary rounded-full" 
+                      style={{ right: `${100 - (formData.preferences.distance / 50 * 100)}%` }}
+                    />
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-2 border-primary cursor-pointer"
+                      style={{ left: `${formData.preferences.distance / 50 * 100}%` }}
+                      // In a real app, you'd implement proper slider functionality
+                    />
                   </div>
                 </div>
               </div>
@@ -254,6 +377,7 @@ const OnboardingSteps: React.FC = () => {
             onClick={nextStep}
             icon={<ArrowRight className="w-4 h-4" />}
             iconPosition="right"
+            disabled={isSubmitting}
           >
             {currentStep < steps.length - 1 ? "Continue" : "Get Started"}
           </Button>

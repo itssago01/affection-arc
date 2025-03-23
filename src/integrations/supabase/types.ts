@@ -9,7 +9,182 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      matches: {
+        Row: {
+          created_at: string
+          id: string
+          matched: boolean | null
+          user1_id: string
+          user1_liked: boolean | null
+          user2_id: string
+          user2_liked: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          matched?: boolean | null
+          user1_id: string
+          user1_liked?: boolean | null
+          user2_id: string
+          user2_liked?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          matched?: boolean | null
+          user1_id?: string
+          user1_liked?: boolean | null
+          user2_id?: string
+          user2_liked?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_user1_id_fkey"
+            columns: ["user1_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_user2_id_fkey"
+            columns: ["user2_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          match_id: string
+          reactions: string[] | null
+          read: boolean | null
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          match_id: string
+          reactions?: string[] | null
+          read?: boolean | null
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          match_id?: string
+          reactions?: string[] | null
+          read?: boolean | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          age: number | null
+          bio: string | null
+          created_at: string
+          gender: string | null
+          id: string
+          images: string[] | null
+          interests: string[] | null
+          location: string | null
+          looking_for: string | null
+          name: string | null
+          updated_at: string
+        }
+        Insert: {
+          age?: number | null
+          bio?: string | null
+          created_at?: string
+          gender?: string | null
+          id: string
+          images?: string[] | null
+          interests?: string[] | null
+          location?: string | null
+          looking_for?: string | null
+          name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          age?: number | null
+          bio?: string | null
+          created_at?: string
+          gender?: string | null
+          id?: string
+          images?: string[] | null
+          interests?: string[] | null
+          location?: string | null
+          looking_for?: string | null
+          name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          last_swipe_reset: string
+          remaining_swipes: number | null
+          start_date: string
+          tier: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          last_swipe_reset?: string
+          remaining_swipes?: number | null
+          start_date?: string
+          tier?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          last_swipe_reset?: string
+          remaining_swipes?: number | null
+          start_date?: string
+          tier?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
