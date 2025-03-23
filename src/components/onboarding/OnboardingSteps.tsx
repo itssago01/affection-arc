@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -125,7 +126,11 @@ const OnboardingSteps: React.FC = () => {
 
   const validateAboutStep = (): boolean => {
     let isValid = true;
-    const newErrors = { name: "", age: "" };
+    const newErrors = { 
+      ...formErrors,
+      name: "", 
+      age: "" 
+    };
     
     if (!formData.name.trim()) {
       newErrors.name = "Name is required";
