@@ -1,8 +1,8 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Import step components
 import WelcomeStep from "./steps/WelcomeStep";
@@ -36,6 +36,7 @@ const steps = [
 ];
 
 const OnboardingSteps: React.FC = () => {
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
     name: "",
@@ -166,11 +167,9 @@ const OnboardingSteps: React.FC = () => {
       try {
         setIsSubmitting(true);
         
-        const { data: { user } } = await supabase.auth.getUser();
-        
         if (!user) {
           toast.error("You need to be logged in to create a profile");
-          navigate("/");
+          navigate("/auth");
           return;
         }
         

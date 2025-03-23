@@ -1,16 +1,20 @@
 
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Heart, MessageSquare, User, Settings, Crown } from "lucide-react";
+import { Heart, MessageSquare, User, Settings, Crown, LogOut, LogIn } from "lucide-react";
 import AnimatedContainer from "../common/AnimatedContainer";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [isHome, setIsHome] = useState(true);
   const { isSubscribed } = useSubscription();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     setIsHome(location.pathname === "/");
@@ -26,6 +30,17 @@ const Navbar = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [location.pathname]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success("Logged out successfully");
+      navigate("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Failed to log out");
+    }
+  };
 
   const navbarClass = cn(
     "fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-4 md:px-6 py-4",
@@ -54,7 +69,7 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {!isHome && navItems.map((item, index) => (
+            {!isHome && user && navItems.map((item, index) => (
               <AnimatedContainer
                 key={item.path}
                 animation="slide-down"
@@ -79,7 +94,7 @@ const Navbar = () => {
           </div>
 
           {/* Mobile Navigation Bar (fixed at bottom) */}
-          {!isHome && (
+          {!isHome && user && (
             <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border md:hidden flex justify-around items-center py-3 px-4 z-50">
               {navItems.map((item) => (
                 <Link
@@ -102,31 +117,49 @@ const Navbar = () => {
 
           {/* Settings and Subscription (Desktop) */}
           <div className="hidden md:flex items-center space-x-3">
-            <Link
-              to="/subscription"
-              className={cn(
-                "flex items-center gap-1 p-2 rounded-full hover:bg-muted/80 transition-all duration-300",
-                {
-                  "text-amber-400": isSubscribed,
-                  "text-foreground": !isSubscribed,
-                }
-              )}
-            >
-              <Crown className={cn("w-5 h-5", { "fill-amber-400": isSubscribed })} />
-              {isSubscribed && <span className="text-sm font-medium">Premium</span>}
-            </Link>
-            <Link
-              to="/settings"
-              className={cn(
-                "p-2 rounded-full hover:bg-muted/80 transition-all duration-300",
-                {
-                  "text-primary": location.pathname === "/settings",
-                  "text-foreground": location.pathname !== "/settings",
-                }
-              )}
-            >
-              <Settings className="w-5 h-5" />
-            </Link>
+            {user ? (
+              <>
+                <Link
+                  to="/subscription"
+                  className={cn(
+                    "flex items-center gap-1 p-2 rounded-full hover:bg-muted/80 transition-all duration-300",
+                    {
+                      "text-amber-400": isSubscribed,
+                      "text-foreground": !isSubscribed,
+                    }
+                  )}
+                >
+                  <Crown className={cn("w-5 h-5", { "fill-amber-400": isSubscribed })} />
+                  {isSubscribed && <span className="text-sm font-medium">Premium</span>}
+                </Link>
+                <Link
+                  to="/settings"
+                  className={cn(
+                    "p-2 rounded-full hover:bg-muted/80 transition-all duration-300",
+                    {
+                      "text-primary": location.pathname === "/settings",
+                      "text-foreground": location.pathname !== "/settings",
+                    }
+                  )}
+                >
+                  <Settings className="w-5 h-5" />
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 rounded-full hover:bg-muted/80 transition-all duration-300 text-foreground"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/auth"
+                className="flex items-center gap-1 py-1 px-3 rounded-full border border-primary text-primary hover:bg-primary/10 transition-all duration-300"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Log in</span>
+              </Link>
+            )}
           </div>
         </div>
       </div>

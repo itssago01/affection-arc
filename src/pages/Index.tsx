@@ -5,10 +5,12 @@ import AnimatedContainer from "@/components/common/AnimatedContainer";
 import { Button } from "@/components/common/Button";
 import { Heart } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -22,6 +24,22 @@ const Index = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const handleGetStarted = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      navigate("/auth#signup");
+    }
+  };
+
+  const handleTryDemo = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      navigate("/auth");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -56,19 +74,19 @@ const Index = () => {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Button 
                     size="lg" 
-                    onClick={() => navigate("/onboarding")}
+                    onClick={handleGetStarted}
                     icon={<Heart className="w-5 h-5" />}
                     className="px-8"
                   >
-                    Get Started
+                    {user ? "Go to Dashboard" : "Get Started"}
                   </Button>
                   <Button 
                     variant="outline" 
                     size="lg"
-                    onClick={() => navigate("/dashboard")}
+                    onClick={handleTryDemo}
                     className="px-8"
                   >
-                    Try Demo
+                    {user ? "Your Profile" : "Log In"}
                   </Button>
                 </div>
               </AnimatedContainer>
@@ -179,11 +197,11 @@ const Index = () => {
               </p>
               <Button 
                 size="lg" 
-                onClick={() => navigate("/onboarding")}
+                onClick={handleGetStarted}
                 icon={<Heart className="w-5 h-5" />}
                 className="px-8"
               >
-                Get Started Free
+                {user ? "Go to Dashboard" : "Get Started Free"}
               </Button>
             </AnimatedContainer>
           </div>
