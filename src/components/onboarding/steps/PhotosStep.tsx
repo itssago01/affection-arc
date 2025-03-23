@@ -3,20 +3,27 @@ import React from "react";
 import AnimatedContainer from "../../common/AnimatedContainer";
 import { Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface PhotosStepProps {
   title: string;
   description: string;
   photos: string[];
   onPhotoUpload: (index: number) => void;
+  error?: string;
 }
 
 const PhotosStep: React.FC<PhotosStepProps> = ({ 
   title, 
   description, 
   photos, 
-  onPhotoUpload 
+  onPhotoUpload,
+  error
 }) => {
+  // Count the number of uploaded photos
+  const uploadedPhotoCount = photos.filter(photo => photo).length;
+  
   return (
     <div className="max-w-md mx-auto">
       <AnimatedContainer animation="slide-up">
@@ -29,7 +36,7 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
               key={idx}
               className={cn(
                 "aspect-square rounded-lg border-2 border-dashed flex items-center justify-center bg-muted/50 cursor-pointer hover:bg-muted transition-colors duration-200",
-                idx < 2 && "border-primary/50"
+                idx < 3 && "border-primary/50"
               )}
               onClick={() => onPhotoUpload(idx)}
             >
@@ -42,7 +49,7 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
               ) : (
                 <Upload className={cn(
                   "w-6 h-6",
-                  idx < 2 ? "text-primary" : "text-muted-foreground"
+                  idx < 3 ? "text-primary" : "text-muted-foreground"
                 )} />
               )}
             </div>
@@ -50,8 +57,23 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
         </div>
         
         <p className="text-sm text-muted-foreground">
-          Upload at least 2 photos to continue. Tap each box to upload.
+          Upload at least 3 photos to continue. Tap each box to upload.
         </p>
+        
+        {error && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="mt-2 text-sm">
+          <span className={uploadedPhotoCount >= 3 ? "text-green-500" : "text-muted-foreground"}>
+            {uploadedPhotoCount} of 3 required photos uploaded
+          </span>
+        </div>
       </AnimatedContainer>
     </div>
   );

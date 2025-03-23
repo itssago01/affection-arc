@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +52,7 @@ const OnboardingSteps: React.FC = () => {
   const [formErrors, setFormErrors] = useState({
     name: "",
     age: "",
+    photos: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -73,7 +73,6 @@ const OnboardingSteps: React.FC = () => {
         [field]: value,
       });
       
-      // Clear error when field is updated
       if (formErrors[field as keyof typeof formErrors]) {
         setFormErrors({
           ...formErrors,
@@ -84,7 +83,6 @@ const OnboardingSteps: React.FC = () => {
   };
 
   const handlePhotoUpload = (index: number) => {
-    // For demo purposes, we'll just add a placeholder URL
     const demoImages = [
       "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
       "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
@@ -94,7 +92,6 @@ const OnboardingSteps: React.FC = () => {
       "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
     ];
     
-    // Add the image to the photos array if not already there
     const updatedPhotos = [...formData.photos];
     if (!updatedPhotos[index]) {
       updatedPhotos[index] = demoImages[index % demoImages.length];
@@ -103,6 +100,27 @@ const OnboardingSteps: React.FC = () => {
         photos: updatedPhotos,
       });
     }
+    
+    if (formErrors.photos) {
+      setFormErrors({
+        ...formErrors,
+        photos: "",
+      });
+    }
+  };
+
+  const validatePhotosStep = (): boolean => {
+    const uploadedPhotoCount = formData.photos.filter(photo => photo).length;
+    
+    if (uploadedPhotoCount < 3) {
+      setFormErrors({
+        ...formErrors,
+        photos: "Please upload at least 3 photos before continuing.",
+      });
+      return false;
+    }
+    
+    return true;
   };
 
   const validateAboutStep = (): boolean => {
@@ -127,8 +145,11 @@ const OnboardingSteps: React.FC = () => {
   };
 
   const nextStep = async () => {
-    // If we're on the About step, validate before proceeding
-    if (currentStep === 2) {
+    if (currentStep === 1) {
+      if (!validatePhotosStep()) {
+        return;
+      }
+    } else if (currentStep === 2) {
       if (!validateAboutStep()) {
         return;
       }
@@ -137,11 +158,9 @@ const OnboardingSteps: React.FC = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Complete onboarding by saving profile to Supabase
       try {
         setIsSubmitting(true);
         
-        // Get the current user
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
@@ -150,7 +169,6 @@ const OnboardingSteps: React.FC = () => {
           return;
         }
         
-        // Create profile in Supabase
         const { error } = await supabase.from('profiles').upsert({
           id: user.id,
           name: formData.name,
@@ -160,8 +178,6 @@ const OnboardingSteps: React.FC = () => {
           gender: formData.preferences.gender === "all" ? null : formData.preferences.gender,
           interests: formData.interests,
           images: formData.photos,
-          // We're not setting looking_for here since we need to map the preferences
-          // to the correct format expected by the database
         });
         
         if (error) {
@@ -186,7 +202,6 @@ const OnboardingSteps: React.FC = () => {
     }
   };
 
-  // Render the current step content
   const renderStepContent = () => {
     const step = steps[currentStep];
     
@@ -206,6 +221,7 @@ const OnboardingSteps: React.FC = () => {
             description={step.description}
             photos={formData.photos}
             onPhotoUpload={handlePhotoUpload}
+            error={formErrors.photos}
           />
         );
       
@@ -242,17 +258,13 @@ const OnboardingSteps: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Progress bar */}
       <ProgressBar currentStep={currentStep} totalSteps={steps.length} />
       
-      {/* Content */}
       <div className="flex-1 flex flex-col p-6 pt-8">
-        {/* Step content */}
         <div className="flex-1 flex items-center justify-center">
           {renderStepContent()}
         </div>
         
-        {/* Navigation buttons */}
         <StepNavigator 
           currentStep={currentStep}
           totalSteps={steps.length}
