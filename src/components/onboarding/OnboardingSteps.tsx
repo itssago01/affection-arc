@@ -59,7 +59,8 @@ const OnboardingSteps: React.FC = () => {
       setFormData({
         ...formData,
         [parent]: {
-          ...formData[parent as keyof typeof formData],
+          // Fix this part - the error was happening here when accessing formData[parent]
+          ...(formData[parent as keyof typeof formData] as object || {}),
           [child]: value,
         },
       });
