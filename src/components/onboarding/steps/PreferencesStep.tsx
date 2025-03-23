@@ -23,11 +23,19 @@ const PreferencesStep: React.FC<PreferencesStepProps> = ({
   onPreferenceChange
 }) => {
   const handleAgeRangeChange = (values: number[]) => {
-    onPreferenceChange("preferences.ageRange", [values[0], values[1]]);
+    // Ensure we always have exactly two values
+    if (values.length >= 2) {
+      onPreferenceChange("preferences.ageRange", [values[0], values[1]]);
+    } else if (values.length === 1) {
+      // If only one value is provided, use it for both min and max
+      onPreferenceChange("preferences.ageRange", [values[0], values[0]]);
+    }
   };
 
   const handleDistanceChange = (values: number[]) => {
-    onPreferenceChange("preferences.distance", values[0]);
+    if (values.length > 0) {
+      onPreferenceChange("preferences.distance", values[0]);
+    }
   };
 
   return (

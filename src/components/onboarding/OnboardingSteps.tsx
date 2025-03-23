@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,7 +45,7 @@ const OnboardingSteps: React.FC = () => {
     photos: [] as string[],
     interests: [] as string[],
     preferences: {
-      ageRange: [18, 50],
+      ageRange: [18, 50] as [number, number],
       distance: 25,
       gender: "all",
     },
