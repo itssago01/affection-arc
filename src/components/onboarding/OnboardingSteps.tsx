@@ -50,6 +50,10 @@ const OnboardingSteps: React.FC = () => {
       gender: "all",
     },
   });
+  const [formErrors, setFormErrors] = useState({
+    name: "",
+    age: "",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -68,6 +72,14 @@ const OnboardingSteps: React.FC = () => {
         ...formData,
         [field]: value,
       });
+      
+      // Clear error when field is updated
+      if (formErrors[field as keyof typeof formErrors]) {
+        setFormErrors({
+          ...formErrors,
+          [field]: "",
+        });
+      }
     }
   };
 
@@ -93,7 +105,35 @@ const OnboardingSteps: React.FC = () => {
     }
   };
 
+  const validateAboutStep = (): boolean => {
+    let isValid = true;
+    const newErrors = { name: "", age: "" };
+    
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required";
+      isValid = false;
+    }
+    
+    if (!formData.age) {
+      newErrors.age = "Age is required";
+      isValid = false;
+    } else if (parseInt(formData.age) < 18) {
+      newErrors.age = "You must be at least 18 years old";
+      isValid = false;
+    }
+    
+    setFormErrors(newErrors);
+    return isValid;
+  };
+
   const nextStep = async () => {
+    // If we're on the About step, validate before proceeding
+    if (currentStep === 2) {
+      if (!validateAboutStep()) {
+        return;
+      }
+    }
+    
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -179,6 +219,7 @@ const OnboardingSteps: React.FC = () => {
             location={formData.location}
             bio={formData.bio}
             onFieldChange={handleChange}
+            errors={formErrors}
           />
         );
       
