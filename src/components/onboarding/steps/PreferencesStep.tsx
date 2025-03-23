@@ -2,6 +2,8 @@
 import React from "react";
 import AnimatedContainer from "../../common/AnimatedContainer";
 import { cn } from "@/lib/utils";
+import { Slider } from "@/components/ui/slider";
+import { Heart, Users, MapPin } from "lucide-react";
 
 interface PreferencesStepProps {
   title: string;
@@ -20,72 +22,83 @@ const PreferencesStep: React.FC<PreferencesStepProps> = ({
   distance,
   onPreferenceChange
 }) => {
+  const handleAgeRangeChange = (values: number[]) => {
+    onPreferenceChange("preferences.ageRange", [values[0], values[1]]);
+  };
+
+  const handleDistanceChange = (values: number[]) => {
+    onPreferenceChange("preferences.distance", values[0]);
+  };
+
   return (
     <div className="max-w-md mx-auto">
       <AnimatedContainer animation="slide-up">
         <h2 className="text-2xl font-semibold mb-2">{title}</h2>
         <p className="text-muted-foreground mb-6">{description}</p>
         
-        <div className="space-y-6 mb-6">
-          <div>
-            <label className="text-sm font-medium mb-1 block">I'm interested in</label>
+        <div className="space-y-8 mb-6">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Heart className="h-5 w-5 text-primary" />
+              <label className="text-sm font-medium block">I'm interested in</label>
+            </div>
             <div className="grid grid-cols-3 gap-3">
-              {["Women", "Men", "Everyone"].map((option) => (
+              {["women", "men", "all"].map((option) => (
                 <button
                   key={option}
                   className={cn(
                     "py-2 px-4 rounded-lg border transition-all duration-200",
-                    option.toLowerCase() === gender 
+                    option === gender 
                       ? "bg-primary/10 border-primary text-primary"
                       : "border-border hover:border-primary/50"
                   )}
-                  onClick={() => onPreferenceChange("gender", option.toLowerCase())}
+                  onClick={() => onPreferenceChange("preferences.gender", option)}
                 >
-                  {option}
+                  {option === "women" ? "Women" : option === "men" ? "Men" : "Everyone"}
                 </button>
               ))}
             </div>
           </div>
           
-          <div>
-            <label className="text-sm font-medium mb-3 block">
-              Age range: {ageRange[0]}-{ageRange[1]}
-            </label>
-            <div className="h-2 bg-muted rounded-full relative">
-              <div 
-                className="absolute h-full bg-primary rounded-full" 
-                style={{
-                  left: `${(ageRange[0] - 18) / (50 - 18) * 100}%`,
-                  right: `${100 - ((ageRange[1] - 18) / (50 - 18) * 100)}%`
-                }}
-              />
-              <div 
-                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-2 border-primary cursor-pointer"
-                style={{ left: `${(ageRange[0] - 18) / (50 - 18) * 100}%` }}
-                // In a real app, you'd implement proper slider functionality
-              />
-              <div 
-                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-2 border-primary cursor-pointer"
-                style={{ left: `${(ageRange[1] - 18) / (50 - 18) * 100}%` }}
-                // In a real app, you'd implement proper slider functionality
-              />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              <label className="text-sm font-medium block">
+                Age range: {ageRange[0]}-{ageRange[1]}
+              </label>
+            </div>
+            <Slider 
+              defaultValue={[ageRange[0], ageRange[1]]}
+              min={18}
+              max={80}
+              step={1}
+              onValueChange={handleAgeRangeChange}
+              className="my-6"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>18</span>
+              <span>80</span>
             </div>
           </div>
           
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Maximum distance: {distance} miles
-            </label>
-            <div className="h-2 bg-muted rounded-full relative">
-              <div 
-                className="absolute left-0 h-full bg-primary rounded-full" 
-                style={{ right: `${100 - (distance / 50 * 100)}%` }}
-              />
-              <div 
-                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-2 border-primary cursor-pointer"
-                style={{ left: `${distance / 50 * 100}%` }}
-                // In a real app, you'd implement proper slider functionality
-              />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" />
+              <label className="text-sm font-medium block">
+                Maximum distance: {distance} miles
+              </label>
+            </div>
+            <Slider 
+              defaultValue={[distance]}
+              min={5}
+              max={100}
+              step={5}
+              onValueChange={handleDistanceChange}
+              className="my-6"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>5 miles</span>
+              <span>100 miles</span>
             </div>
           </div>
         </div>

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -250,7 +249,7 @@ const OnboardingSteps: React.FC = () => {
             title={step.title} 
             description={step.description}
             gender={formData.preferences.gender}
-            ageRange={formData.preferences.ageRange as [number, number]}
+            ageRange={formData.preferences.ageRange}
             distance={formData.preferences.distance}
             onPreferenceChange={handleChange}
           />
