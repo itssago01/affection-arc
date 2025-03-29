@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useRef } from "react";
 import AnimatedContainer from "../../common/AnimatedContainer";
 import { Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ interface PhotosStepProps {
   title: string;
   description: string;
   photos: string[];
-  onPhotoUpload: (index: number) => void;
+  onPhotoUpload: (index: number, file?: File) => void;
   error?: string;
 }
 
@@ -23,6 +23,23 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
 }) => {
   // Count the number of uploaded photos
   const uploadedPhotoCount = photos.filter(photo => photo).length;
+  
+  // Create refs for file inputs
+  const fileInputRefs = Array(6).fill(0).map(() => useRef<HTMLInputElement>(null));
+  
+  const handleClick = (index: number) => {
+    // Trigger file input click
+    if (fileInputRefs[index]?.current) {
+      fileInputRefs[index].current.click();
+    }
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onPhotoUpload(index, file);
+    }
+  };
   
   return (
     <div className="max-w-md mx-auto">
@@ -38,7 +55,7 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
                 "aspect-square rounded-lg border-2 border-dashed flex items-center justify-center bg-muted/50 cursor-pointer hover:bg-muted transition-colors duration-200",
                 idx < 3 && "border-primary/50"
               )}
-              onClick={() => onPhotoUpload(idx)}
+              onClick={() => handleClick(idx)}
             >
               {photos[idx] ? (
                 <img 
@@ -52,12 +69,21 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
                   idx < 3 ? "text-primary" : "text-muted-foreground"
                 )} />
               )}
+              
+              {/* Hidden file input */}
+              <input 
+                type="file" 
+                ref={fileInputRefs[idx]}
+                className="hidden"
+                accept="image/*"
+                onChange={(e) => handleFileChange(e, idx)}
+              />
             </div>
           ))}
         </div>
         
         <p className="text-sm text-muted-foreground">
-          Upload at least 3 photos to continue. Tap each box to upload.
+          Upload at least 3 photos to continue. Tap each box to upload from your device.
         </p>
         
         {error && (

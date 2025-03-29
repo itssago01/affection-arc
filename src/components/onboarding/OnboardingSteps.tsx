@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { v4 as uuidv4 } from "uuid";
 
 // Import step components
 import WelcomeStep from "./steps/WelcomeStep";
@@ -57,6 +58,7 @@ const OnboardingSteps: React.FC = () => {
     photos: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (field: string, value: any) => {
@@ -84,30 +86,92 @@ const OnboardingSteps: React.FC = () => {
     }
   };
 
-  const handlePhotoUpload = (index: number) => {
-    const demoImages = [
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
-      "https://images.unsplash.com/photo-1517841905240-472988babdf9",
-      "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6",
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
-    ];
+  const uploadImageToStorage = async (file: File): Promise<string | null> => {
+    if (!user) return null;
     
-    const updatedPhotos = [...formData.photos];
-    if (!updatedPhotos[index]) {
-      updatedPhotos[index] = demoImages[index % demoImages.length];
-      setFormData({
-        ...formData,
-        photos: updatedPhotos,
-      });
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${uuidv4()}.${fileExt}`;
+      const filePath = `profile-images/${fileName}`;
+      
+      const { error: uploadError, data } = await supabase.storage
+        .from('user-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+        
+      if (uploadError) {
+        console.error("Error uploading image:", uploadError);
+        toast.error("Failed to upload image. Please try again.");
+        return null;
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from('user-images')
+        .getPublicUrl(filePath);
+        
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error("Error in image upload:", error);
+      toast.error("Failed to process image. Please try again.");
+      return null;
     }
-    
-    if (formErrors.photos) {
-      setFormErrors({
-        ...formErrors,
-        photos: "",
-      });
+  };
+
+  const handlePhotoUpload = async (index: number, file?: File) => {
+    if (file) {
+      setIsUploading(true);
+      try {
+        const imageUrl = await uploadImageToStorage(file);
+        
+        if (imageUrl) {
+          const updatedPhotos = [...formData.photos];
+          updatedPhotos[index] = imageUrl;
+          
+          setFormData({
+            ...formData,
+            photos: updatedPhotos,
+          });
+          
+          if (formErrors.photos) {
+            setFormErrors({
+              ...formErrors,
+              photos: "",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error handling photo upload:", error);
+        toast.error("Failed to upload photo. Please try again.");
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      const demoImages = [
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
+        "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+        "https://images.unsplash.com/photo-1517841905240-472988babdf9",
+        "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6",
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+      ];
+      
+      const updatedPhotos = [...formData.photos];
+      if (!updatedPhotos[index]) {
+        updatedPhotos[index] = demoImages[index % demoImages.length];
+        setFormData({
+          ...formData,
+          photos: updatedPhotos,
+        });
+      }
+      
+      if (formErrors.photos) {
+        setFormErrors({
+          ...formErrors,
+          photos: "",
+        });
+      }
     }
   };
 
@@ -151,6 +215,11 @@ const OnboardingSteps: React.FC = () => {
   };
 
   const nextStep = async () => {
+    if (isUploading) {
+      toast.info("Please wait while your photos are uploading...");
+      return;
+    }
+    
     if (currentStep === 1) {
       if (!validatePhotosStep()) {
         return;
@@ -274,7 +343,7 @@ const OnboardingSteps: React.FC = () => {
           totalSteps={steps.length}
           onPrevious={prevStep}
           onNext={nextStep}
-          isSubmitting={isSubmitting}
+          isSubmitting={isSubmitting || isUploading}
         />
       </div>
     </div>
