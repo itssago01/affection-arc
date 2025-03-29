@@ -1,16 +1,24 @@
-
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import AnimatedContainer from "../../common/AnimatedContainer";
-import { Upload } from "lucide-react";
+import { Upload, X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 interface PhotosStepProps {
   title: string;
   description: string;
   photos: string[];
   onPhotoUpload: (index: number, file?: File) => void;
+  onPhotoDelete?: (index: number) => void;
   error?: string;
 }
 
@@ -19,6 +27,7 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
   description, 
   photos, 
   onPhotoUpload,
+  onPhotoDelete,
   error
 }) => {
   // Count the number of uploaded photos
@@ -27,8 +36,19 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
   // Create refs for file inputs
   const fileInputRefs = Array(6).fill(0).map(() => useRef<HTMLInputElement>(null));
   
+  // State for the preview modal
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  
   const handleClick = (index: number) => {
-    // Trigger file input click
+    // If there's already a photo, show preview
+    if (photos[index]) {
+      setPreviewIndex(index);
+      setPreviewOpen(true);
+      return;
+    }
+    
+    // Otherwise trigger file input click
     if (fileInputRefs[index]?.current) {
       fileInputRefs[index].current.click();
     }
@@ -39,6 +59,13 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
     if (file) {
       onPhotoUpload(index, file);
     }
+  };
+  
+  const handleDeletePhoto = (index: number) => {
+    if (onPhotoDelete) {
+      onPhotoDelete(index);
+    }
+    setPreviewOpen(false);
   };
   
   return (
@@ -52,17 +79,22 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
             <div
               key={idx}
               className={cn(
-                "aspect-square rounded-lg border-2 border-dashed flex items-center justify-center bg-muted/50 cursor-pointer hover:bg-muted transition-colors duration-200",
+                "aspect-square rounded-lg border-2 border-dashed flex items-center justify-center bg-muted/50 cursor-pointer hover:bg-muted transition-colors duration-200 relative group",
                 idx < 3 && "border-primary/50"
               )}
               onClick={() => handleClick(idx)}
             >
               {photos[idx] ? (
-                <img 
-                  src={photos[idx]}
-                  alt={`User photo ${idx + 1}`}
-                  className="w-full h-full object-cover rounded-lg"
-                />
+                <>
+                  <img 
+                    src={photos[idx]}
+                    alt={`User photo ${idx + 1}`}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                    <X className="w-6 h-6 text-white" />
+                  </div>
+                </>
               ) : (
                 <Upload className={cn(
                   "w-6 h-6",
@@ -101,6 +133,34 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
           </span>
         </div>
       </AnimatedContainer>
+      
+      {/* Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Photo Preview</DialogTitle>
+          </DialogHeader>
+          {previewIndex !== null && photos[previewIndex] && (
+            <div className="flex flex-col items-center space-y-4">
+              <div className="w-full h-64 md:h-80 overflow-hidden rounded-md">
+                <img 
+                  src={photos[previewIndex]}
+                  alt={`Photo preview ${previewIndex + 1}`}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <Button 
+                variant="destructive" 
+                onClick={() => handleDeletePhoto(previewIndex)}
+                className="w-full"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Photo
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

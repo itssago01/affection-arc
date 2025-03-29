@@ -15,7 +15,8 @@ const StepRenderer: React.FC = () => {
     formData, 
     formErrors, 
     handleChange, 
-    handlePhotoUpload 
+    handlePhotoUpload,
+    handlePhotoDelete 
   } = useOnboarding();
   
   const step = onboardingSteps[currentStep];
@@ -36,6 +37,7 @@ const StepRenderer: React.FC = () => {
           description={step.description}
           photos={formData.photos}
           onPhotoUpload={handlePhotoUpload}
+          onPhotoDelete={handlePhotoDelete}
           error={formErrors.photos}
         />
       );

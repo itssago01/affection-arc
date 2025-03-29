@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +36,7 @@ interface OnboardingContextType {
   prevStep: () => void;
   handleChange: (field: string, value: any) => void;
   handlePhotoUpload: (index: number, file?: File) => void;
+  handlePhotoDelete: (index: number) => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
@@ -188,6 +188,24 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const handlePhotoDelete = (index: number) => {
+    try {
+      const updatedPhotos = [...formData.photos];
+      
+      updatedPhotos[index] = "";
+      
+      setFormData({
+        ...formData,
+        photos: updatedPhotos,
+      });
+      
+      toast.success("Photo deleted successfully");
+    } catch (error) {
+      console.error("Error deleting photo:", error);
+      toast.error("Failed to delete photo");
+    }
+  };
+
   const validatePhotosStep = (): boolean => {
     const uploadedPhotoCount = formData.photos.filter(photo => photo).length;
     
@@ -304,6 +322,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         prevStep,
         handleChange,
         handlePhotoUpload,
+        handlePhotoDelete,
       }}
     >
       {children}
