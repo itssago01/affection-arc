@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
@@ -8,9 +7,12 @@ import { Button } from "@/components/common/Button";
 import { Input } from "@/components/ui/input";
 import { Edit, Save, MapPin, Calendar, Heart, Mail, User, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState({
     name: "Alex Johnson",
@@ -53,19 +55,23 @@ const Profile = () => {
     setTempProfile((prev) => ({ ...prev, interests: interestsArray }));
   };
 
-  const handleLogout = () => {
-    // In a real app, this would handle logout logic
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success("You've been logged out");
+      navigate("/auth");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Failed to log out");
+    }
   };
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
       <div className="container max-w-4xl pt-20 px-4 md:px-6">
-        {/* Header section with user info and images */}
         <div className="mt-8">
           <AnimatedContainer animation="fade-in" className="space-y-8">
-            {/* Profile actions */}
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-bold">My Profile</h1>
               <div className="flex gap-2">
@@ -96,7 +102,6 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Photos grid */}
             <div className="grid grid-cols-3 gap-3">
               {profile.images.map((image, index) => (
                 <AnimatedContainer 
@@ -122,7 +127,6 @@ const Profile = () => {
               ))}
             </div>
 
-            {/* Profile info */}
             <div className="bg-card rounded-xl p-6 shadow-sm">
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="md:w-1/3">
@@ -215,7 +219,6 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Account settings & logout */}
             <div className="bg-card rounded-xl p-6 shadow-sm">
               <h3 className="text-lg font-medium mb-4">Account</h3>
               <div className="space-y-2">

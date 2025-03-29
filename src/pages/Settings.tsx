@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import AnimatedContainer from "@/components/common/AnimatedContainer";
@@ -8,9 +7,11 @@ import { Button } from "@/components/common/Button";
 import { useNavigate } from "react-router-dom";
 import { BellRing, Shield, Eye, Moon, LogOut, Heart, MessageSquare, User, Info } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [settings, setSettings] = useState({
     notifications: {
       newMatches: true,
@@ -40,9 +41,15 @@ const Settings = () => {
     toast.success(`Setting updated successfully`);
   };
 
-  const handleLogout = () => {
-    toast.success("You've been logged out");
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success("You've been logged out");
+      navigate("/auth");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Failed to log out");
+    }
   };
 
   return (
