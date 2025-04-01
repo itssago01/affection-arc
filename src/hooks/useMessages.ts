@@ -5,8 +5,8 @@ import { MessageType, ReactionType } from "@/components/messaging/MessageBubble"
 import { uploadFileAttachment, uploadVoiceClip } from "@/lib/message-upload";
 import { useToast } from "@/hooks/use-toast";
 
-// Sample conversation data
-const sampleConversations = {
+// Sample conversation data with corrected types
+const sampleConversations: Record<string, Omit<Conversation, "id">> = {
   "1": {
     name: "Sophie",
     age: 27,
@@ -76,7 +76,7 @@ const sampleConversations = {
 };
 
 // Sample matches list
-const sampleMatchesList = [
+const sampleMatchesList: Match[] = [
   {
     id: "1",
     name: "Sophie",
