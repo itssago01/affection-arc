@@ -20,12 +20,14 @@ import Subscription from "./pages/Subscription";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { useEffect } from "react";
 import { initializeStorage } from "./lib/supabase-storage";
+import { ensureMessageAttachmentsBucket } from "./lib/message-upload";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   // Initialize Supabase storage on app startup
   useEffect(() => {
+    // Initialize main storage
     initializeStorage()
       .then(success => {
         if (success) {
@@ -36,6 +38,19 @@ const App = () => {
       })
       .catch(error => {
         console.error("Error initializing Supabase storage:", error);
+      });
+      
+    // Initialize message attachments bucket
+    ensureMessageAttachmentsBucket()
+      .then(success => {
+        if (success) {
+          console.log("Message attachments bucket initialized successfully");
+        } else {
+          console.warn("Failed to initialize message attachments bucket");
+        }
+      })
+      .catch(error => {
+        console.error("Error initializing message attachments bucket:", error);
       });
   }, []);
 
@@ -137,3 +152,4 @@ const App = () => {
 };
 
 export default App;
+

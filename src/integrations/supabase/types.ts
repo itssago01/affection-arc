@@ -58,29 +58,41 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          file_type: string | null
+          file_url: string | null
           id: string
           match_id: string
           reactions: string[] | null
           read: boolean | null
           sender_id: string
+          voice_clip_duration: number | null
+          voice_clip_url: string | null
         }
         Insert: {
           content: string
           created_at?: string
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           match_id: string
           reactions?: string[] | null
           read?: boolean | null
           sender_id: string
+          voice_clip_duration?: number | null
+          voice_clip_url?: string | null
         }
         Update: {
           content?: string
           created_at?: string
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           match_id?: string
           reactions?: string[] | null
           read?: boolean | null
           sender_id?: string
+          voice_clip_duration?: number | null
+          voice_clip_url?: string | null
         }
         Relationships: [
           {

@@ -2,12 +2,16 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import MessageBubble, { MessageType, ReactionType } from "@/components/messaging/MessageBubble";
+import VoiceRecorder from "@/components/messaging/VoiceRecorder";
+import FileAttachment from "@/components/messaging/FileAttachment";
 import AnimatedContainer from "@/components/common/AnimatedContainer";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Heart, Image, Mic, Paperclip, Send } from "lucide-react";
+import { ArrowLeft, Heart, Send } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { uploadFileAttachment, uploadVoiceClip } from "@/lib/message-upload";
+import { supabase } from "@/integrations/supabase/client";
 
 // Sample conversation data
 const sampleConversations = {
@@ -118,10 +122,11 @@ const Messages = () => {
   const [conversations, setConversations] = useState<any>(sampleConversations);
   const [matches, setMatches] = useState(sampleMatchesList);
   const [isRecording, setIsRecording] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [attachmentType, setAttachmentType] = useState<"file" | "image" | null>(null);
   const messageEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Set active conversation based on route param
   useEffect(() => {
     if (id && conversations[id]) {
       setActiveConversation({
@@ -133,23 +138,72 @@ const Messages = () => {
     }
   }, [id, conversations, matches, navigate, activeConversation]);
 
-  // Scroll to bottom of messages
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConversation]);
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !activeConversation) return;
+  const handleSendMessage = async () => {
+    if ((!newMessage.trim() && !selectedFile) || !activeConversation) return;
 
     const message: MessageType = {
       id: Date.now().toString(),
-      content: newMessage,
+      content: newMessage.trim(),
       sender: "user",
       timestamp: new Date(),
       status: "sent",
     };
 
-    // Update conversations state
+    setNewMessage("");
+
+    if (selectedFile) {
+      try {
+        toast({
+          description: "Uploading attachment..."
+        });
+        
+        const userId = "current-user-id";
+        const matchId = activeConversation.id;
+        
+        if (selectedFile.type.startsWith('image/')) {
+          const result = await uploadFileAttachment(selectedFile, userId, matchId);
+          
+          if (result.success) {
+            message.file_url = result.url;
+            message.file_type = result.type;
+          } else {
+            toast({
+              title: "Error",
+              description: "Failed to upload image",
+              variant: "destructive"
+            });
+          }
+        } else {
+          const result = await uploadFileAttachment(selectedFile, userId, matchId);
+          
+          if (result.success) {
+            message.file_url = result.url;
+            message.file_type = result.type;
+          } else {
+            toast({
+              title: "Error",
+              description: "Failed to upload file",
+              variant: "destructive"
+            });
+          }
+        }
+        
+        setSelectedFile(null);
+        setAttachmentType(null);
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        toast({
+          title: "Error",
+          description: "Failed to upload attachment",
+          variant: "destructive"
+        });
+      }
+    }
+
     setConversations({
       ...conversations,
       [activeConversation.id]: {
@@ -158,27 +212,93 @@ const Messages = () => {
       },
     });
 
-    // Update active conversation
     setActiveConversation({
       ...activeConversation,
       messages: [...activeConversation.messages, message],
     });
 
-    // Clear input
-    setNewMessage("");
-
-    // Simulate message delivery status update
     setTimeout(() => {
       updateMessageStatus(message.id, "delivered");
       
-      // Simulate match typing
       if (Math.random() > 0.3) {
         simulateMatchTyping();
       }
     }, 1000);
   };
 
-  // Update message status (sent -> delivered -> read)
+  const handleSendVoiceMessage = async (audioBlob: Blob, duration: number) => {
+    if (!activeConversation) return;
+    
+    try {
+      toast({
+        description: "Uploading voice message..."
+      });
+      
+      const userId = "current-user-id";
+      const matchId = activeConversation.id;
+      
+      const result = await uploadVoiceClip(audioBlob, duration, userId, matchId);
+      
+      if (result.success) {
+        const message: MessageType = {
+          id: Date.now().toString(),
+          content: "",
+          sender: "user",
+          timestamp: new Date(),
+          status: "sent",
+          voice_clip_url: result.url,
+          voice_clip_duration: result.duration,
+        };
+        
+        setConversations({
+          ...conversations,
+          [activeConversation.id]: {
+            ...conversations[activeConversation.id],
+            messages: [...conversations[activeConversation.id].messages, message],
+          },
+        });
+
+        setActiveConversation({
+          ...activeConversation,
+          messages: [...activeConversation.messages, message],
+        });
+        
+        setTimeout(() => {
+          updateMessageStatus(message.id, "delivered");
+          
+          if (Math.random() > 0.3) {
+            simulateMatchTyping();
+          }
+        }, 1000);
+        
+        setIsRecording(false);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to upload voice message",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error uploading voice message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to upload voice message",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleFileSelected = (file: File) => {
+    setSelectedFile(file);
+    setAttachmentType(file.type.startsWith('image/') ? 'image' : 'file');
+  };
+
+  const handleCancelAttachment = () => {
+    setSelectedFile(null);
+    setAttachmentType(null);
+  };
+
   const updateMessageStatus = (messageId: string, status: "sent" | "delivered" | "read") => {
     if (!activeConversation) return;
     
@@ -200,7 +320,6 @@ const Messages = () => {
     });
   };
 
-  // Handle message reactions
   const handleMessageReaction = (messageId: string, reaction: ReactionType) => {
     if (!activeConversation) return;
     
@@ -221,7 +340,6 @@ const Messages = () => {
       },
     });
 
-    // Show toast when adding a reaction (not when removing)
     if (reaction) {
       toast({
         description: `You reacted with ${reaction === "heart" ? "❤️" : reaction === "thumbsUp" ? "👍" : "😄"}`
@@ -229,7 +347,6 @@ const Messages = () => {
     }
   };
 
-  // Handle message deletion
   const handleDeleteMessage = (messageId: string) => {
     if (!activeConversation) return;
     
@@ -255,11 +372,9 @@ const Messages = () => {
     });
   };
 
-  // Simulate match typing and response
   const simulateMatchTyping = () => {
     if (!activeConversation) return;
     
-    // Set typing indicator
     setConversations({
       ...conversations,
       [activeConversation.id]: {
@@ -273,11 +388,9 @@ const Messages = () => {
       isTyping: true,
     });
     
-    // After a random delay, send a response
     const typingDuration = 1500 + Math.random() * 3000;
     
     setTimeout(() => {
-      // Clear typing indicator
       setConversations({
         ...conversations,
         [activeConversation.id]: {
@@ -291,26 +404,50 @@ const Messages = () => {
         isTyping: false,
       });
       
-      // Generate a response message
-      const responseMessages = [
-        "That sounds great! I'd love to hear more.",
-        "Hmm, let me think about that...",
-        "That's so interesting! Tell me more!",
-        "I feel the same way!",
-        "What else have you been up to lately?",
-        "I hadn't thought about it that way before!",
-      ];
+      const responseType = Math.random();
       
-      const responseIndex = Math.floor(Math.random() * responseMessages.length);
-      const responseMessage: MessageType = {
-        id: Date.now().toString(),
-        content: responseMessages[responseIndex],
-        sender: "match",
-        timestamp: new Date(),
-        status: "sent",
-      };
+      let responseMessage: MessageType;
       
-      // Update conversations with the new response
+      if (responseType < 0.7) {
+        const responseMessages = [
+          "That sounds great! I'd love to hear more.",
+          "Hmm, let me think about that...",
+          "That's so interesting! Tell me more!",
+          "I feel the same way!",
+          "What else have you been up to lately?",
+          "I hadn't thought about it that way before!",
+        ];
+        
+        const responseIndex = Math.floor(Math.random() * responseMessages.length);
+        responseMessage = {
+          id: Date.now().toString(),
+          content: responseMessages[responseIndex],
+          sender: "match",
+          timestamp: new Date(),
+          status: "sent",
+        };
+      } else if (responseType < 0.85) {
+        responseMessage = {
+          id: Date.now().toString(),
+          content: "",
+          sender: "match",
+          timestamp: new Date(),
+          status: "sent",
+          voice_clip_url: "https://assets.mixkit.co/sfx/preview/mixkit-message-pop-alert-2354.mp3",
+          voice_clip_duration: 6,
+        };
+      } else {
+        responseMessage = {
+          id: Date.now().toString(),
+          content: "Check out this photo!",
+          sender: "match",
+          timestamp: new Date(),
+          status: "sent",
+          file_url: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=60",
+          file_type: "image/jpeg",
+        };
+      }
+      
       const updatedConversation = {
         ...conversations[activeConversation.id],
         messages: [...conversations[activeConversation.id].messages, responseMessage],
@@ -327,7 +464,6 @@ const Messages = () => {
         isTyping: false,
       });
       
-      // Simulate marking user's messages as read
       setTimeout(() => {
         const unreadUserMessages = activeConversation.messages
           .filter((msg: MessageType) => msg.sender === "user" && msg.status !== "read");
@@ -355,28 +491,17 @@ const Messages = () => {
     }, typingDuration);
   };
 
-  // Handle voice recording
-  const toggleRecording = () => {
-    if (isRecording) {
-      setIsRecording(false);
-      toast({
-        description: "Voice recording canceled"
-      });
-    } else {
-      setIsRecording(true);
-      toast({
-        description: "Voice recording is not implemented yet",
-        variant: "destructive"
-      });
-      setTimeout(() => setIsRecording(false), 2000);
-    }
+  const handleStartRecording = () => {
+    setIsRecording(true);
   };
 
-  // Handle file attachment
-  const handleAttachment = () => {
+  const handleStopRecording = () => {
+  };
+
+  const handleCancelRecording = () => {
+    setIsRecording(false);
     toast({
-      description: "File attachment is not implemented yet",
-      variant: "destructive"
+      description: "Voice recording canceled"
     });
   };
 
@@ -399,7 +524,6 @@ const Messages = () => {
       <Navbar />
       
       <main className="container max-w-6xl mx-auto h-[calc(100vh-64px-80px)] md:h-[calc(100vh-64px)] flex flex-col md:flex-row">
-        {/* Matches/Conversations sidebar */}
         <div className="w-full md:w-80 border-r border-border">
           <div className="p-4 border-b border-border">
             <h1 className="text-2xl font-bold">Messages</h1>
@@ -450,11 +574,9 @@ const Messages = () => {
           </div>
         </div>
         
-        {/* Message content */}
         <div className="flex-1 flex flex-col">
           {activeConversation ? (
             <>
-              {/* Conversation header */}
               <div className="p-4 border-b border-border flex items-center">
                 <Button 
                   variant="ghost" 
@@ -483,7 +605,6 @@ const Messages = () => {
                 </div>
               </div>
               
-              {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {activeConversation.messages.map((message: MessageType, index: number) => (
                   <MessageBubble 
@@ -496,85 +617,66 @@ const Messages = () => {
                 <div ref={messageEndRef} />
               </div>
               
-              {/* Message input */}
               <div className="p-4 border-t border-border">
-                <div className="flex items-center">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="text-muted-foreground hover:text-foreground"
-                          onClick={handleAttachment}
-                        >
-                          <Paperclip className="w-5 h-5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <p>Add attachment</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="text-muted-foreground hover:text-foreground"
-                          onClick={handleAttachment}
-                        >
-                          <Image className="w-5 h-5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <p>Send photo</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 mx-2 rounded-full bg-muted/50 border border-border focus:ring-primary/20"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleSendMessage();
-                      }
-                    }}
-                  />
-                  
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant={isRecording ? "destructive" : "ghost"}
-                          size="icon"
-                          className={isRecording ? "" : "text-muted-foreground hover:text-foreground"}
-                          onClick={toggleRecording}
-                        >
-                          <Mic className={`w-5 h-5 ${isRecording ? "animate-pulse" : ""}`} />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <p>{isRecording ? "Cancel recording" : "Voice message"}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  
-                  <Button 
-                    variant={newMessage.trim() ? "primary" : "ghost"}
-                    size="icon"
-                    onClick={handleSendMessage}
-                    disabled={!newMessage.trim()}
-                    icon={<Send className="w-5 h-5" />}
-                  >
-                    <span className="sr-only">Send</span>
-                  </Button>
-                </div>
+                {selectedFile ? (
+                  <div className="flex items-center mb-2">
+                    <FileAttachment 
+                      onFileSelected={handleFileSelected}
+                      onCancel={handleCancelAttachment}
+                      isAttaching={!!selectedFile}
+                      attachmentType={attachmentType}
+                    />
+                  </div>
+                ) : isRecording ? (
+                  <div className="flex items-center">
+                    <VoiceRecorder 
+                      isRecording={isRecording}
+                      onStartRecording={handleStartRecording}
+                      onStopRecording={handleStopRecording}
+                      onCancelRecording={handleCancelRecording}
+                      onSendRecording={handleSendVoiceMessage}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center">
+                    <FileAttachment 
+                      onFileSelected={handleFileSelected}
+                      onCancel={handleCancelAttachment}
+                      isAttaching={false}
+                      attachmentType={null}
+                    />
+                    
+                    <Input
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Type a message..."
+                      className="flex-1 mx-2 rounded-full bg-muted/50 border border-border focus:ring-primary/20"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleSendMessage();
+                        }
+                      }}
+                    />
+                    
+                    <VoiceRecorder 
+                      isRecording={isRecording}
+                      onStartRecording={handleStartRecording}
+                      onStopRecording={handleStopRecording}
+                      onCancelRecording={handleCancelRecording}
+                      onSendRecording={handleSendVoiceMessage}
+                    />
+                    
+                    <Button 
+                      variant={newMessage.trim() ? "primary" : "ghost"}
+                      size="icon"
+                      onClick={handleSendMessage}
+                      disabled={!newMessage.trim() && !selectedFile}
+                      icon={<Send className="w-5 h-5" />}
+                    >
+                      <span className="sr-only">Send</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           ) : (

@@ -1,9 +1,9 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import AnimatedContainer from "../common/AnimatedContainer";
-import { Check, CheckCheck, Heart, Laugh, ThumbsUp, Trash, X } from "lucide-react";
+import { Check, CheckCheck, FileAudio, Heart, Image as ImageIcon, Laugh, Paperclip, Play, Pause, ThumbsUp, Trash, X } from "lucide-react";
 import { Button } from "../common/Button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -17,6 +17,10 @@ export type MessageType = {
   status?: "sent" | "delivered" | "read";
   reaction?: ReactionType;
   isDeleted?: boolean;
+  file_url?: string | null;
+  file_type?: string | null;
+  voice_clip_url?: string | null;
+  voice_clip_duration?: number | null;
 };
 
 type MessageBubbleProps = {
@@ -36,6 +40,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
   const isUserMessage = message.sender === "user";
   const [showReactions, setShowReactions] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   
   // Status icon mapping
   const statusIcon = () => {
@@ -86,6 +92,51 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
   };
 
+  // Handle voice clip playback
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    
+    setIsPlaying(!isPlaying);
+  };
+
+  // Handle audio events
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+  };
+
+  // Format duration (seconds to MM:SS)
+  const formatDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // Determine if the message has an image attachment
+  const hasImageAttachment = message.file_url && message.file_type?.startsWith('image/');
+  
+  // Determine if the message has a non-image file attachment
+  const hasFileAttachment = message.file_url && !message.file_type?.startsWith('image/');
+  
+  // Determine if the message has a voice clip
+  const hasVoiceClip = message.voice_clip_url;
+
+  // Get the file name from URL
+  const getFileName = (url: string): string => {
+    const parts = url.split('/');
+    const fullFileName = parts[parts.length - 1];
+    // If the filename is a UUID, return a generic name
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(fullFileName)) {
+      return "Attachment";
+    }
+    return fullFileName;
+  };
+
   return (
     <AnimatedContainer
       animation="scale-in"
@@ -111,8 +162,73 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           {message.isDeleted ? (
             <p className="text-sm">This message was deleted</p>
           ) : (
-            <>
-              <p className="text-sm">{message.content}</p>
+            <div>
+              {/* Text content */}
+              {message.content && <p className="text-sm">{message.content}</p>}
+              
+              {/* Image attachment */}
+              {hasImageAttachment && message.file_url && (
+                <div className="mt-2 rounded-lg overflow-hidden">
+                  <img 
+                    src={message.file_url} 
+                    alt="Attachment" 
+                    className="max-w-full max-h-60 object-contain"
+                  />
+                </div>
+              )}
+              
+              {/* File attachment */}
+              {hasFileAttachment && message.file_url && (
+                <a 
+                  href={message.file_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "mt-2 flex items-center p-2 rounded-lg",
+                    isUserMessage ? "bg-primary-foreground/10" : "bg-background"
+                  )}
+                >
+                  <Paperclip className="w-4 h-4 mr-2" />
+                  <span className="text-sm truncate max-w-[200px]">
+                    {getFileName(message.file_url)}
+                  </span>
+                </a>
+              )}
+              
+              {/* Voice clip */}
+              {hasVoiceClip && message.voice_clip_url && (
+                <div className={cn(
+                  "mt-2 flex items-center p-2 rounded-lg gap-2",
+                  isUserMessage ? "bg-primary-foreground/10" : "bg-background"
+                )}>
+                  <button 
+                    onClick={togglePlayPause} 
+                    className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-primary/20"
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-4 h-4" />
+                    ) : (
+                      <Play className="w-4 h-4" />
+                    )}
+                  </button>
+                  
+                  <div className="flex-grow h-1 bg-muted-foreground/20 rounded-full">
+                    <div className={`h-full bg-primary rounded-full ${isPlaying ? "animate-pulse" : ""}`} style={{ width: isPlaying ? "100%" : "0%" }}></div>
+                  </div>
+                  
+                  <span className="text-xs">
+                    {message.voice_clip_duration ? formatDuration(message.voice_clip_duration) : "0:00"}
+                  </span>
+                  
+                  <audio 
+                    ref={audioRef}
+                    src={message.voice_clip_url}
+                    onEnded={handleAudioEnded}
+                    className="hidden"
+                  />
+                </div>
+              )}
+              
               {showTimestamp && (
                 <div className="mt-1 flex items-center justify-end gap-1">
                   <span
@@ -126,7 +242,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   {isUserMessage && statusIcon()}
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
 
