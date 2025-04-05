@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MessageType, ReactionType } from "@/components/messaging/MessageBubble";
@@ -501,7 +500,6 @@ export const useMessages = (conversationId?: string) => {
   };
 
   const handleStopRecording = () => {
-    // This is empty in the original code
   };
 
   const handleCancelRecording = () => {
