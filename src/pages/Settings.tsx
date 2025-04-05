@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import AnimatedContainer from "@/components/common/AnimatedContainer";
@@ -5,13 +6,15 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/common/Button";
 import { useNavigate } from "react-router-dom";
-import { BellRing, Shield, Eye, Moon, LogOut, Heart, MessageSquare, User, Info } from "lucide-react";
+import { BellRing, Shield, Eye, Moon, LogOut, Heart, MessageSquare, User, Info, Sun, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [settings, setSettings] = useState({
     notifications: {
       newMatches: true,
@@ -24,21 +27,50 @@ const Settings = () => {
       profileVisibility: "public",
     },
     appearance: {
-      darkMode: false,
+      darkMode: theme === "dark",
       reducedMotion: false,
     }
   });
 
   const handleSettingToggle = (category: string, setting: string) => {
+    if (category === "appearance" && setting === "darkMode") {
+      // Toggle between light and dark theme
+      const newDarkModeSetting = !settings.appearance.darkMode;
+      setTheme(newDarkModeSetting ? "dark" : "light");
+      
+      setSettings((prev) => ({
+        ...prev,
+        appearance: {
+          ...prev.appearance,
+          darkMode: newDarkModeSetting,
+        },
+      }));
+    } else {
+      setSettings((prev) => ({
+        ...prev,
+        [category]: {
+          ...prev[category as keyof typeof prev],
+          [setting]: !prev[category as keyof typeof prev][setting as keyof typeof prev[keyof typeof prev]],
+        },
+      }));
+    }
+    
+    toast.success(`Setting updated successfully`);
+  };
+
+  const handleThemeChange = (selectedTheme: "light" | "dark" | "colorful") => {
+    setTheme(selectedTheme);
+    
+    // Update the darkMode setting to stay in sync
     setSettings((prev) => ({
       ...prev,
-      [category]: {
-        ...prev[category as keyof typeof prev],
-        [setting]: !prev[category as keyof typeof prev][setting as keyof typeof prev[keyof typeof prev]],
+      appearance: {
+        ...prev.appearance,
+        darkMode: selectedTheme === "dark",
       },
     }));
     
-    toast.success(`Setting updated successfully`);
+    toast.success(`${selectedTheme.charAt(0).toUpperCase() + selectedTheme.slice(1)} theme applied`);
   };
 
   const handleLogout = async () => {
@@ -143,7 +175,7 @@ const Settings = () => {
                 <h2 className="text-lg font-medium mb-4 flex items-center">
                   <Eye className="w-5 h-5 mr-2" /> Appearance Settings
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">Dark Mode</p>
@@ -153,6 +185,35 @@ const Settings = () => {
                       checked={settings.appearance.darkMode} 
                       onCheckedChange={() => handleSettingToggle("appearance", "darkMode")} 
                     />
+                  </div>
+                  <div>
+                    <p className="font-medium mb-2">Theme</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <Button 
+                        variant={theme === "light" ? "default" : "outline"} 
+                        className="flex flex-col items-center p-3 h-auto"
+                        onClick={() => handleThemeChange("light")}
+                      >
+                        <Sun className="h-6 w-6 mb-1" />
+                        <span className="text-xs">Light</span>
+                      </Button>
+                      <Button 
+                        variant={theme === "dark" ? "default" : "outline"} 
+                        className="flex flex-col items-center p-3 h-auto"
+                        onClick={() => handleThemeChange("dark")}
+                      >
+                        <Moon className="h-6 w-6 mb-1" />
+                        <span className="text-xs">Dark</span>
+                      </Button>
+                      <Button 
+                        variant={theme === "colorful" ? "default" : "outline"} 
+                        className="flex flex-col items-center p-3 h-auto"
+                        onClick={() => handleThemeChange("colorful")}
+                      >
+                        <Palette className="h-6 w-6 mb-1" />
+                        <span className="text-xs">Colorful</span>
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
