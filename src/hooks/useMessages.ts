@@ -1,129 +1,21 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageType, ReactionType } from "@/components/messaging/MessageBubble";
-import { uploadFileAttachment, uploadVoiceClip } from "@/lib/message-upload";
 import { useToast } from "@/hooks/use-toast";
-
-// Sample conversation data with corrected types
-const sampleConversations: Record<string, Omit<Conversation, "id">> = {
-  "1": {
-    name: "Sophie",
-    age: 27,
-    image: "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=800&q=80",
-    messages: [
-      {
-        id: "1",
-        content: "Hey there! I noticed we both like hiking. What's your favorite trail?",
-        sender: "match",
-        timestamp: new Date(Date.now() - 3600000 * 24),
-        status: "read",
-      },
-      {
-        id: "2",
-        content: "Hi Sophie! I love hiking the Appalachian Trail. Have you been there?",
-        sender: "user",
-        timestamp: new Date(Date.now() - 3600000 * 23),
-        status: "read",
-      },
-      {
-        id: "3",
-        content: "Yes! I did a section of it last summer. It was beautiful. We should go sometime!",
-        sender: "match",
-        timestamp: new Date(Date.now() - 3600000 * 22),
-        status: "read",
-        reaction: "heart",
-      },
-      {
-        id: "4",
-        content: "That sounds great! I'd love to. When are you usually free?",
-        sender: "user",
-        timestamp: new Date(Date.now() - 3600000 * 2),
-        status: "read",
-      }
-    ],
-    isTyping: false,
-  },
-  "2": {
-    name: "Alex",
-    age: 29,
-    image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80",
-    messages: [
-      {
-        id: "1",
-        content: "I saw you like playing guitar too! What kind of music do you play?",
-        sender: "match",
-        timestamp: new Date(Date.now() - 3600000 * 50),
-        status: "read",
-      },
-      {
-        id: "2",
-        content: "Hey Alex! I'm into indie and folk mostly. You?",
-        sender: "user",
-        timestamp: new Date(Date.now() - 3600000 * 49),
-        status: "read",
-      },
-      {
-        id: "3",
-        content: "Same here! Have you heard the new Bon Iver album?",
-        sender: "match",
-        timestamp: new Date(Date.now() - 3600000 * 48),
-        status: "read",
-      }
-    ],
-    isTyping: false,
-  },
-};
-
-// Sample matches list
-const sampleMatchesList: Match[] = [
-  {
-    id: "1",
-    name: "Sophie",
-    age: 27,
-    image: "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=800&q=80",
-    lastMessage: "That sounds great! I'd love to. When are you usually free?",
-    timestamp: new Date(Date.now() - 3600000 * 2),
-    unread: true,
-  },
-  {
-    id: "2",
-    name: "Alex",
-    age: 29,
-    image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80",
-    lastMessage: "Same here! Have you heard the new Bon Iver album?",
-    timestamp: new Date(Date.now() - 3600000 * 48),
-    unread: false,
-  },
-  {
-    id: "3",
-    name: "Emma",
-    age: 26,
-    image: "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=800&q=80",
-    lastMessage: "I love that movie too! We should watch it together sometime.",
-    timestamp: new Date(Date.now() - 3600000 * 72),
-    unread: false,
-  },
-];
-
-export type Match = {
-  id: string;
-  name: string;
-  age: number;
-  image: string;
-  lastMessage: string;
-  timestamp: Date;
-  unread: boolean;
-}
-
-export type Conversation = {
-  id: string;
-  name: string;
-  age: number;
-  image: string;
-  messages: MessageType[];
-  isTyping: boolean;
-}
+import { MessageType, ReactionType, Match, Conversation } from "@/types/messages";
+import { uploadFileAttachment, uploadVoiceClip } from "@/lib/message-upload";
+import { sampleConversations, sampleMatchesList } from "@/data/sampleConversations";
+import { 
+  createTextMessage, 
+  createVoiceMessage,
+  createImageMessage,
+  formatDateRelative,
+  updateMessageStatus,
+  updateMessageReaction,
+  markMessageAsDeleted,
+  showToastForReaction,
+  generateResponseMessages
+} from "@/utils/messageUtils";
 
 export const useMessages = (conversationId?: string) => {
   const navigate = useNavigate();
@@ -223,7 +115,7 @@ export const useMessages = (conversationId?: string) => {
     });
 
     setTimeout(() => {
-      updateMessageStatus(message.id, "delivered");
+      updateMessageDeliveryStatus(message.id, "delivered");
       
       if (Math.random() > 0.3) {
         simulateMatchTyping();
@@ -245,15 +137,7 @@ export const useMessages = (conversationId?: string) => {
       const result = await uploadVoiceClip(audioBlob, duration, userId, matchId);
       
       if (result.success) {
-        const message: MessageType = {
-          id: Date.now().toString(),
-          content: "",
-          sender: "user",
-          timestamp: new Date(),
-          status: "sent",
-          voice_clip_url: result.url,
-          voice_clip_duration: result.duration,
-        };
+        const message = createVoiceMessage(result.url, result.duration, "user");
         
         setConversations({
           ...conversations,
@@ -269,7 +153,7 @@ export const useMessages = (conversationId?: string) => {
         });
         
         setTimeout(() => {
-          updateMessageStatus(message.id, "delivered");
+          updateMessageDeliveryStatus(message.id, "delivered");
           
           if (Math.random() > 0.3) {
             simulateMatchTyping();
@@ -304,12 +188,10 @@ export const useMessages = (conversationId?: string) => {
     setAttachmentType(null);
   };
 
-  const updateMessageStatus = (messageId: string, status: "sent" | "delivered" | "read") => {
+  const updateMessageDeliveryStatus = (messageId: string, status: "sent" | "delivered" | "read") => {
     if (!activeConversation) return;
     
-    const updatedMessages = activeConversation.messages.map((msg: MessageType) => 
-      msg.id === messageId ? { ...msg, status } : msg
-    );
+    const updatedMessages = updateMessageStatus(activeConversation.messages, messageId, status);
     
     setActiveConversation({
       ...activeConversation,
@@ -328,9 +210,7 @@ export const useMessages = (conversationId?: string) => {
   const handleMessageReaction = (messageId: string, reaction: ReactionType) => {
     if (!activeConversation) return;
     
-    const updatedMessages = activeConversation.messages.map((msg: MessageType) => 
-      msg.id === messageId ? { ...msg, reaction } : msg
-    );
+    const updatedMessages = updateMessageReaction(activeConversation.messages, messageId, reaction);
     
     setActiveConversation({
       ...activeConversation,
@@ -345,19 +225,13 @@ export const useMessages = (conversationId?: string) => {
       },
     });
 
-    if (reaction) {
-      toast({
-        description: `You reacted with ${reaction === "heart" ? "❤️" : reaction === "thumbsUp" ? "👍" : "😄"}`
-      });
-    }
+    showToastForReaction(reaction);
   };
 
   const handleDeleteMessage = (messageId: string) => {
     if (!activeConversation) return;
     
-    const updatedMessages = activeConversation.messages.map((msg: MessageType) => 
-      msg.id === messageId ? { ...msg, isDeleted: true } : msg
-    );
+    const updatedMessages = markMessageAsDeleted(activeConversation.messages, messageId);
     
     setActiveConversation({
       ...activeConversation,
@@ -414,43 +288,19 @@ export const useMessages = (conversationId?: string) => {
       let responseMessage: MessageType;
       
       if (responseType < 0.7) {
-        const responseMessages = [
-          "That sounds great! I'd love to hear more.",
-          "Hmm, let me think about that...",
-          "That's so interesting! Tell me more!",
-          "I feel the same way!",
-          "What else have you been up to lately?",
-          "I hadn't thought about it that way before!",
-        ];
-        
-        const responseIndex = Math.floor(Math.random() * responseMessages.length);
-        responseMessage = {
-          id: Date.now().toString(),
-          content: responseMessages[responseIndex],
-          sender: "match",
-          timestamp: new Date(),
-          status: "sent",
-        };
+        responseMessage = createTextMessage(generateResponseMessages(), "match");
       } else if (responseType < 0.85) {
-        responseMessage = {
-          id: Date.now().toString(),
-          content: "",
-          sender: "match",
-          timestamp: new Date(),
-          status: "sent",
-          voice_clip_url: "https://assets.mixkit.co/sfx/preview/mixkit-message-pop-alert-2354.mp3",
-          voice_clip_duration: 6,
-        };
+        responseMessage = createVoiceMessage(
+          "https://assets.mixkit.co/sfx/preview/mixkit-message-pop-alert-2354.mp3", 
+          6, 
+          "match"
+        );
       } else {
-        responseMessage = {
-          id: Date.now().toString(),
-          content: "Check out this photo!",
-          sender: "match",
-          timestamp: new Date(),
-          status: "sent",
-          file_url: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=60",
-          file_type: "image/jpeg",
-        };
+        responseMessage = createImageMessage(
+          "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=60",
+          "Check out this photo!",
+          "match"
+        );
       }
       
       const updatedConversation = {
@@ -511,17 +361,7 @@ export const useMessages = (conversationId?: string) => {
   };
 
   const formatDate = (date: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const day = 24 * 60 * 60 * 1000;
-    
-    if (diff < day) {
-      return "Today";
-    } else if (diff < 2 * day) {
-      return "Yesterday";
-    } else {
-      return date.toLocaleDateString();
-    }
+    return formatDateRelative(date);
   };
 
   return {
