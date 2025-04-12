@@ -35,3 +35,10 @@ export type Conversation = {
   messages: MessageType[];
   isTyping: boolean;
 };
+
+export type DatingPreferences = {
+  gender: "women" | "men" | "all";
+  ageRange: [number, number];
+  distance: number;
+  lookingFor: "casual" | "serious" | "friendship" | "undecided";
+};
